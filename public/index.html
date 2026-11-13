@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundación Ecosueños - Sistema de Gestión Backend</title>
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        .badge { padding: 5px 10px; border-radius: 12px; font-weight: bold; font-size: 12px; color: white; display: inline-block; }
+        .badge-danger { background-color: #e74c3c; }
+        .badge-warning { background-color: #f1c40f; color: #333; }
+        .badge-success { background-color: #2ecc71; }
+        .action-btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 5px; color: white; }
+        .btn-edit { background-color: #2980b9; }
+        .btn-delete { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo-section">🍃 Fundación Ecosueños</div>
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="Busque aquí lo que necesita...">
+            <button class="search-btn">🔍</button>
+        </div>
+    </div>
+    <div class="menu-bar">
+        <button class="menu-btn" onclick="mostrarModulo('inventario')">Inventario</button>
+        <button class="menu-btn" onclick="mostrarModulo('externas')">Donaciones Externas</button>
+        <button class="menu-btn" onclick="mostrarModulo('internas')">Donaciones Internas</button>
+    </div>
+    <div class="info-section" id="seccionInfo">
+        <h2>Reseña Institucional de la Fundación</h2>
+        <p class="info-text">Sonia Camacho es la directora de la Fundación Ecosueños. Con un compromiso y dedicación ejemplares, lidera proyectos enfocados en proteger los derechos de niños y adolescentes vulnerables.</p>
+        <p class="info-text">A través de actividades lúdicas, talleres educativos y el fomento de la lectura —como la entrega de libros de El Principito a nuestra comunidad protegida— sembramos esperanza y herramientas de vida.</p>
+        <div class="info-img-container">
+            <img src="https://imgur.com" alt="Comunidad">
+        </div>
+    </div>
+    <div class="workspace" id="zonaTrabajo">
+        <div class="card" id="contenidoModulo"></div>
+    </div>
+ 
+        <script>
+        let editandoIndex = -1;
+        const datosSistema = {
+            inventario: [
+                { item: 'Libros El Principito', cant: 0, cat: 'Educación' },
+                { item: 'Cuadernos Norma', cant: 4, cat: 'Educación' },
+                { item: 'Leche en Polvo (Cajas)', cant: 45, cat: 'Alimentos' }
+            ],
+            externas: [
+                { donante: 'Empresa Alquería', monto: '$1.500.000', fecha: '2026-11-01' }
+            ],
+            internas: [
+                { colaborador: 'Sonia Camacho', detalle: 'Aporte papelería', fecha: '2026-11-02' }
+            ]
+        };
+
+        function obtenerSemaforo(cantidad) {
+            if (cantidad === 0) return `<span class="badge badge-danger">⚠️ AGOTADO</span>`;
+            if (cantidad <= 5) return `<span class="badge badge-warning">⏳ STOCK BAJO</span>`;
+            return `<span class="badge badge-success">✅ DISPONIBLE</span>`;
+        }
+
+        function mostrarModulo(modulo) {
+            const workspace = document.getElementById('zonaTrabajo');
+            const contenido = document.getElementById('contenidoModulo');
+            document.getElementById('seccionInfo').style.display = 'none';
+            workspace.style.display = 'block';
+            editandoIndex = -1;
+
+            if (modulo === 'inventario') {
+                contenido.innerHTML = `
+                    <h2>📦 Control de Inventario General</h2>
+                    <form onsubmit="guardarInventario(event)">
+                        <div class="form-group"><label>Artículo:</label><input type="text" id="invItem" required></div>
+                        <div class="form-group"><label>Cantidad:</label><input type="number" id="invCant" required min="0"></div>
+                        <div class="form-group"><label>Categoría:</label><select id="invCat"><option value="Educación">Educación</option><option value="Alimentos">Alimentos</option></select></div>
+                        <button class="submit-btn" type="submit" id="btnGuardarInv">Guardar en MySQL</button>
+                    </form>
+                    <div class="table-container">
+                        <table><thead><tr><th>Artículo</th><th>Cantidad</th><th>Semáforo</th><th>Categoría</th><th>Acciones</th></tr></thead>
+                        <tbody>${datosSistema.inventario.map((i, idx) => `<tr><td><strong>${i.item}</strong></td><td>${i.cant}</td><td>${obtenerSemaforo(parseInt(i.cant))}</td><td>${i.cat}</td><td><button class="action-btn btn-edit" onclick="cargarEditarInv(${idx})">✏️</button><button class="action-btn btn-delete" onclick="eliminarRegistro('inventario', ${idx})">🗑️</button></td></tr>`).join('')}</tbody></table>
+                    </div>
+                    <button class="submit-btn" style="background-color:#7f8c8d;margin-top:20px;" onclick="regresarAInicio()">Volver 🏠</button>`;
+            } else if (modulo === 'externas' || modulo === 'internas') {
+                const esExt = modulo === 'externas';
+                const lista = datosSistema[modulo];
+                contenido.innerHTML = `
+                    <h2>${esExt ? '🤝 Donaciones Externas' : '🏠 Aportes Internos'}</h2>
+                    <form onsubmit="guardarDonacion(event, '${modulo}')">
+                        <div class="form-group"><label>${esExt ? 'Donante:' : 'Colaborador:'}</label><input type="text" id="donNombre" required></div>
+                        <div class="form-group"><label>${esExt ? 'Monto:' : 'Detalle:'}</label><input type="text" id="donValor" required></div>
+                        <button class="submit-btn" type="submit" id="btnGuardarDon">Registrar</button>
+                    </form>
+                    <div class="table-container">
+                        <table><thead><tr><th>${esExt ? 'Donante' : 'Colaborador'}</th><th>${esExt ? 'Monto' : 'Detalle'}</th><th>Fecha</th><th>Acciones</th></tr></thead>
+                        <tbody>${lista.map((d, idx) => `<tr><td><strong>${esExt ? d.donante : d.colaborador}</strong></td><td>${esExt ? d.monto : d.detalle}</td><td>${d.fecha}</td><td><button class="action-btn btn-edit" onclick="cargarEditarDon(${idx}, '${modulo}')">✏️</button><button class="action-btn btn-delete" onclick="eliminarRegistro('${modulo}', ${idx})">🗑️</button></td></tr>`).join('')}</tbody></table>
+                    </div>
+                    <button class="submit-btn" style="background-color:#7f8c8d;margin-top:20px;" onclick="regresarAInicio()">Volver 🏠</button>`;
+            }
+            workspace.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cargarEditarInv(index) {
+            editandoIndex = index;
+            const item = datosSistema.inventario[index];
+            document.getElementById('invItem').value = item.item;
+            document.getElementById('invCant').value = item.cant;
+            document.getElementById('invCat').value = item.cat;
+            document.getElementById('btnGuardarInv').innerText = '🔄 Actualizar';
+        }
+
+        function cargarEditarDon(index, modulo) {
+            editandoIndex = index;
+            const item = datosSistema[modulo][index];
+            document.getElementById('donNombre').value = modulo === 'externas' ? item.donante : item.colaborador;
+            document.getElementById('donValor').value = modulo === 'externas' ? item.monto : item.detalle;
+            document.getElementById('btnGuardarDon').innerText = '🔄 Actualizar';
+        }
+
+        function guardarInventario(e) {
+            e.preventDefault();
+            const i = document.getElementById('invItem').value;
+            const c = parseInt(document.getElementById('invCant').value, 10);
+            const ca = document.getElementById('invCat').value;
+            if (editandoIndex > -1) datosSistema.inventario[editandoIndex] = { item: i, cant: c, cat: ca };
+            else datosSistema.inventario.push({ item: i, cant: c, cat: ca });
+            mostrarModulo('inventario');
+        }
+
+        function guardarDonacion(e, modulo) {
+            e.preventDefault();
+            const n = document.getElementById('donNombre').value;
+            const v = document.getElementById('donValor').value;
+            const f = new Date().toISOString().split('T')[0];
+            if (modulo === 'externas') {
+                if (editandoIndex > -1) datosSistema.externas[editandoIndex] = { donante: n, monto: v, fecha: f };
+                else datosSistema.externas.push({ donante: n, monto: v, fecha: f });
+            } else {
+                if (editandoIndex > -1) datosSistema.internas[editandoIndex] = { colaborador: n, detalle: v, fecha: f };
+                else datosSistema.internas.push({ colaborador: n, detalle: v, fecha: f });
+            }
+            mostrarModulo(modulo);
+        }
+
+        function eliminarRegistro(modulo, index) {
+            if (confirm('🗑️ ¿Eliminar registro de MySQL?')) {
+                datosSistema[modulo].splice(index, 1);
+                mostrarModulo(modulo);
+            }
+        }
+
+        function regresarAInicio() {
+            document.getElementById('zonaTrabajo').style.display = 'none';
+            document.getElementById('seccionInfo').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
